@@ -1,0 +1,49 @@
+name: Unit test the front-end service
+
+on:
+  workflow_call:
+    inputs:
+      run-sonarQube-scan:
+        type: boolean
+        default: true
+        required: false
+    secrets:
+      SONAR_QUBE_TOKEN:
+        required: false
+
+jobs:
+  test-frontend-unit:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./front-end
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js v18.X
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.X
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate Typescript typings
+        run: npm run type-check
+
+      - name: Build the web-application
+        run: npm run build
+
+      - name: Run tests and collect coverage
+        run: npm run test:coverage
+
+      - name: SonarQube Scan
+        if: ${{ inputs.run-sonarQube-scan }}
+        uses: sonarsource/sonarqube-scan-action@master
+        with:
+          projectBaseDir: ./front-end
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_QUBE_TOKEN }}
+          SONAR_HOST_URL: https://sonar.cloud-native-minor.it

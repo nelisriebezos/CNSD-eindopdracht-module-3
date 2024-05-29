@@ -1,0 +1,57 @@
+name: Test a back-end service
+
+on:
+  workflow_call:
+    inputs:
+      path:
+        required: true
+        type: string
+      coverage-file:
+        required: true
+        type: string
+      run-sonarQube-scan:
+        type: boolean
+        default: true
+        required: false
+    secrets:
+      SONAR_QUBE_TOKEN:
+        required: false
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.path }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set Locale
+        run: echo "export LC_ALL=C.UTF-8" >> $GITHUB_ENV
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+          cache: "pip"
+
+      - name: Set up SAM CLI
+        uses: aws-actions/setup-sam@v2
+
+      - name: Build the serverless application
+        run: sam build
+
+      - name: Test the serverless application
+        run: |
+          pip3 install -r tests/test-requirements.txt
+          coverage run --source=. -m pytest tests -rap --junitxml target/testreport-coverage.xml
+          coverage xml -o target/${{ inputs.coverage-file }}
+
+      - name: SonarQube Scan
+        if: ${{ inputs.run-sonarQube-scan }}
+        uses: sonarsource/sonarqube-scan-action@master
+        with:
+          projectBaseDir: ${{ inputs.path }}
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_QUBE_TOKEN }}
+          SONAR_HOST_URL: https://sonar.cloud-native-minor.it

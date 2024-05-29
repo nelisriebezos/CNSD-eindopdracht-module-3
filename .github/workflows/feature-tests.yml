@@ -1,0 +1,32 @@
+name: Run tests on feature
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test-back-end-services:
+    strategy:
+      matrix:
+        include:
+          - service: card
+            path: ./card-service
+          - service: user
+            path: ./user-service
+          - service: deck
+            path: ./deck-service
+          - service: wishlist
+            path: ./wishlist-service
+          - service: collection
+            path: ./collection-service
+
+    uses: ./.github/workflows/test-back-end.yml
+    with:
+      path: ${{ matrix.path }}
+      coverage-file: coverage-${{ matrix.service }}.xml
+      run-sonarQube-scan: false
+
+  test-front-end:
+    uses: ./.github/workflows/test-front-end-unit.yml
+    with:
+      run-sonarQube-scan: false

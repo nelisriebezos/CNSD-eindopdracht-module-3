@@ -1,0 +1,76 @@
+name: Deploy a back-end service
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: The environment name for the stack. Only lower-case and no spaces!
+        required: true
+        type: string
+      service-name:
+        description: The service name. Example user-service
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      service-name:
+        required: true
+        type: string
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./${{ inputs.service-name }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+
+      - name: Set up SAM CLI
+        uses: aws-actions/setup-sam@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Build the serverless application
+        run: sam build
+
+      - name: Deploy the serverless application
+        run: >
+          sam deploy 
+          --no-confirm-changeset 
+          --no-fail-on-empty-changeset 
+          --parameter-overrides Stage=${{ inputs.environment }} 
+          --stack-name '${{inputs.service-name}}-${{inputs.environment}}' 
+          --s3-prefix '${{inputs.service-name}}-${{inputs.environment}}'
+
+      - name: Run performance tests if monitoring service and staging
+        if: ${{ inputs.service-name == 'monitoring-service' && inputs.environment == 'staging' }}
+        run: |
+          sudo apt-get install maven
+          mvn gatling:test -DStage=${{ inputs.environment }} -Dsimulation=AllSimulations
+
+      - name: Upload test results
+        if: ${{ inputs.service-name == 'monitoring-service' && inputs.environment == 'staging' }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: gatling-results
+          path: ./${{inputs.service-name}}/target/gatling/**

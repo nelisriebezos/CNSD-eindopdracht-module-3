@@ -1,0 +1,79 @@
+name: Deploy the front-end
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: The environment name for the stack. Only lower-case and no spaces!
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+
+jobs:
+  deploy-frontend:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./front-end
+
+    steps:
+      - name: Use Node.js 18.X
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.X
+
+      - name: Git checkout
+        uses: actions/checkout@v4
+
+      - name: Install packages
+        run: |
+          npm ci
+
+      - name: Production build
+        run: |
+          unset CI
+          npm run build --omit dev
+
+      - name: Set up SAM CLI
+        uses: aws-actions/setup-sam@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Build the web-application
+        run: sam build
+
+      - name: Deploy the web-application application infrastructure
+        run: >
+          sam deploy 
+          --no-confirm-changeset 
+          --no-fail-on-empty-changeset 
+          --parameter-overrides Stage=${{ inputs.environment }} 
+          --stack-name 'front-end-${{inputs.environment}}' 
+          --s3-prefix 'front-end-${{inputs.environment}}'
+
+      - name: Retrieve SSM parameter
+        id: parameters
+        run: |
+          echo "bucket_name=$(aws ssm get-parameter --name="/${{ inputs.environment }}/frontEnd/bucketName" --output json | jq '.Parameter.Value' -r)" >> $GITHUB_OUTPUT
+          echo "cloudfront_id=$(aws ssm get-parameter --name="/${{ inputs.environment }}/frontEnd/cloudFrontId" --output json | jq '.Parameter.Value' -r)" >> $GITHUB_OUTPUT
+
+      - name: Upload to S3
+        run: aws s3 sync dist s3://${{ steps.parameters.outputs.bucket_name }}/
+
+      - name: Invalidate CloudFront caches
+        run: aws cloudfront create-invalidation --distribution-id ${{ steps.parameters.outputs.cloudfront_id }}  --paths "/*" 1> /dev/null

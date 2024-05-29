@@ -1,0 +1,52 @@
+name: Test and deploy staging and production
+
+on:
+  push:
+    branches:
+     - master
+  workflow_dispatch:
+
+jobs:
+  test-and-deploy-staging:
+    uses: ./.github/workflows/test-and-deploy-environment.yml
+    with:
+      environment: staging
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      SONAR_TOKEN_CARD: ${{ secrets.SONAR_TOKEN_CARD }}
+      SONAR_TOKEN_USER: ${{ secrets.SONAR_TOKEN_USER }}
+      SONAR_TOKEN_DECK: ${{ secrets.SONAR_TOKEN_DECK }}
+      SONAR_TOKEN_WISHLIST: ${{ secrets.SONAR_TOKEN_WISHLIST }}
+      SONAR_TOKEN_COLLECTION: ${{ secrets.SONAR_TOKEN_COLLECTION }}
+      SONAR_TOKEN_FRONT_END: ${{ secrets.SONAR_TOKEN_FRONT_END }}
+
+  deploy-production:
+    needs: test-and-deploy-staging
+    uses: ./.github/workflows/build-dev-environment.yml
+    with:
+      environment: production
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+  tag-and-release:
+    needs: deploy-production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Tag the build version
+        run: |
+          git tag "v${GITHUB_RUN_NUMBER}"
+          git push origin "v${GITHUB_RUN_NUMBER}"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: v${{ github.run_number }}
+          tag_name: v${{ github.run_number }}
+          draft: false
+          prerelease: false

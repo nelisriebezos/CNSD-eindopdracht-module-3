@@ -1,0 +1,215 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Deck-service
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 10
+    MemorySize: 128
+    Handler: app.lambda_handler
+    Runtime: python3.9
+    Architectures:
+      - x86_64
+    Tracing: Active
+    Environment:
+      Variables:
+        EVENT_BUS_ARN:
+          Fn::ImportValue:
+            !Sub "common-service-${Stage}-MTGEventBus"
+        DYNAMO_DB_DECK_TABLE_NAME: !Ref MTGDeckDynamoDBTable
+        STAGE: !Ref Stage
+
+Parameters:
+  Stage:
+    Type: String
+    Default: development
+
+Resources:
+  MTGDeckApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub "${Stage}-mtg-deck-api"
+      StageName: !Ref Stage
+      OpenApiVersion: '2.0'
+      DefinitionBody:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location: ./swagger-spec.json
+      Auth:
+        Authorizers:
+          CognitoAuth:
+            UserPoolArn:
+              Fn::ImportValue: !Sub user-service-${Stage}-cognito-user-pool
+            Identity:
+              Header: Authorization
+        DefaultAuthorizer: CognitoAuth
+      MethodSettings:
+        - ResourcePath: '/*'
+          HttpMethod: '*'
+          LoggingLevel: INFO
+          MetricsEnabled: true
+      AccessLogSetting:
+        DestinationArn: !GetAtt AccessLogGroup.Arn
+        Format: '{"requestTime":"$context.requestTime","requestId":"$context.requestId","httpMethod":"$context.httpMethod","path":"$context.path","routeKey":"$context.routeKey","status":$context.status,"responseLatency":$context.responseLatency}'
+
+  AccessLogGroup:
+    Type: AWS::Logs::LogGroup
+
+  MTGDeckApiUrlParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /${Stage}/MTGDeckApi/url
+      Type: String
+      Value: !Sub "https://${MTGDeckApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
+
+  MTGDeckDynamoDBTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    Properties:
+      TableName: !Sub "${Stage}-mtg-deck-db"
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+
+  CreateDeckFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "deck-service-${Stage}-CreateDeckFunction"
+      CodeUri: functions/CreateDeck/
+      Events:
+        HelloWorld:
+          Type: Api
+          Properties:
+            RestApiId: !Ref "MTGDeckApi"
+            Path: /api/decks/
+            Method: POST
+      Policies:
+        - AmazonDynamoDBFullAccess
+
+  RemoveCardFromDeckFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/RemoveCard/
+      Events:
+        HelloWorld:
+          Type: Api
+          Properties:
+            RestApiId: !Ref "MTGDeckApi"
+            Path: /api/decks/{deck_id}/cards/{card_id}
+            Method: DELETE
+      Environment:
+        Variables:
+          DYNAMODB_TABLE_NAME: !Ref MTGDeckDynamoDBTable
+      Policies:
+        - AmazonDynamoDBFullAccess
+
+  GetDecksFromUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "deck-service-${Stage}-GetDecksFromUserFunction"
+      CodeUri: functions/GetDecksFromUser/
+      Events:
+        HelloWorld:
+          Type: Api
+          Properties:
+            RestApiId: !Ref "MTGDeckApi"
+            Path: /api/decks/
+            Method: GET
+      Policies:
+        - AmazonDynamoDBReadOnlyAccess
+
+  GetDeckByIdFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "deck-service-${Stage}-GetDeckByIdFunction"
+      CodeUri: functions/GetDeckById/
+      Events:
+        HelloWorld:
+          Type: Api
+          Properties:
+            RestApiId: !Ref "MTGDeckApi"
+            Path: /api/decks/{deck_id}
+            Method: GET
+      Policies:
+        - AmazonDynamoDBReadOnlyAccess
+
+  GetCardsFromDeckFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "deck-service-${Stage}-GetCardsFromDeckFunction"
+      CodeUri: functions/GetCardsFromDeck/
+      Events:
+        GetAllCardsFromDeck:
+          Type: Api
+          Properties:
+            RestApiId: !Ref "MTGDeckApi"
+            Path: /api/decks/{deck_id}/cards
+            Method: GET
+      Policies:
+        - AmazonDynamoDBReadOnlyAccess
+
+  AddCardToDeckFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/AddCardToDeck/
+      Events:
+        AddCardToDeck:
+          Type: Api
+          Properties:
+            RestApiId: !Ref "MTGDeckApi"
+            Path: /api/decks/{deck_id}/cards/
+            Method: POST
+      Policies:
+        - AmazonDynamoDBFullAccess
+        - AmazonSSMReadOnlyAccess
+
+  GetCardByIdFromDeckFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "deck-service-${Stage}-GetCardByIdFromDeckFunction"
+      CodeUri: functions/GetCardByIdFromDeck/
+      Events:
+        GetCardFromDeck:
+          Type: Api
+          Properties:
+            RestApiId: !Ref "MTGDeckApi"
+            Path: /api/decks/{deck_id}/cards/{card_id}
+            Method: GET
+      Policies:
+        - AmazonDynamoDBReadOnlyAccess
+
+  EditDeckCardFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/EditDeckCard/
+      Events:
+        EditDeckCard:
+          Type: Api
+          Properties:
+            RestApiId: !Ref "MTGDeckApi"
+            Path: /api/decks/{deck_id}/cards/{card_id}
+            Method: PATCH
+      Policies:
+        - AmazonDynamoDBFullAccess
+        - AmazonSSMReadOnlyAccess
+
+Outputs:
+  MTGDeckApiUrl:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${MTGDeckApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
+  MTGDeckApi:
+    Description: "Api gateway"
+    Value: !Ref MTGDeckApi
+    Export:
+      Name:
+        'Fn::Sub': '${AWS::StackName}-api'

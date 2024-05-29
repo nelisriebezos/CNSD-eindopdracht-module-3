@@ -1,0 +1,822 @@
+{
+  "ModelName": "CNSDM Module 3 Eindopdracht DB Design",
+  "ModelMetadata": {
+    "Author": "Team Dragons",
+    "DateCreated": "Dec 21, 2023, 09:22 AM",
+    "DateLastModified": "Jan 24, 2024, 09:05 PM",
+    "Description": "DB designs for the MTG deck/collection management system",
+    "AWSService": "Amazon DynamoDB",
+    "Version": "3.0"
+  },
+  "DataModel": [
+    {
+      "TableName": "Cards",
+      "KeyAttributes": {
+        "PartitionKey": {
+          "AttributeName": "PK",
+          "AttributeType": "S"
+        },
+        "SortKey": {
+          "AttributeName": "SK",
+          "AttributeType": "S"
+        }
+      },
+      "NonKeyAttributes": [
+        {
+          "AttributeName": "oracle_name",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "oracle_text",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "mana_cost",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "type_line",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "set_name",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "set_code",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "released_at",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "face_name",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "flavor_text",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "image_url",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "rarity",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "colors",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "price",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "data_type",
+          "AttributeType": "S"
+        }
+      ],
+      "TableFacets": [
+        {
+          "FacetName": "Cards",
+          "KeyAttributeAlias": {
+            "PartitionKeyAlias": "oracle_id",
+            "SortKeyAlias": "print_id"
+          },
+          "TableData": [],
+          "NonKeyAttributes": [
+            "oracle_name",
+            "oracle_text",
+            "mana_cost",
+            "type_line",
+            "set_name",
+            "set_code",
+            "released_at",
+            "face_name",
+            "flavor_text",
+            "image_url",
+            "rarity",
+            "colors",
+            "price",
+            "data_type"
+          ],
+          "DataAccess": {
+            "MySql": {}
+          }
+        }
+      ],
+      "TableData": [
+        {
+          "PK": {
+            "S": "oracle_id#562d71b9-1646-474e-9293-55da6947a758"
+          },
+          "SK": {
+            "S": "print_id#67f4c93b-080c-4196-b095-6a120a221988#Face#1"
+          },
+          "oracle_text": {
+            "S": "Return from your graveyard to the battlefield any number of target creature cards that each have a different mana value X or less."
+          },
+          "mana_cost": {
+            "S": "\"{X}{B}{B}{B}\""
+          },
+          "type_line": {
+            "S": "Sorcery"
+          },
+          "face_name": {
+            "S": "Agadeem's Awakening"
+          },
+          "flavor_text": {
+            "S": "\"Now is the death-hour, just before dawn. Wake, sleepers, and haunt the living!\"\\n—Vivias, Witch Vessel"
+          },
+          "image_url": {
+            "S": "https://cards.scryfall.io/png/front/6/7/67f4c93b-080c-4196-b095-6a120a221988.png?1604195226"
+          },
+          "colors": {
+            "S": "[\"B\"]"
+          },
+          "data_type": {
+            "S": "Face"
+          }
+        },
+        {
+          "PK": {
+            "S": "oracle_id#562d71b9-1646-474e-9293-55da6947a758"
+          },
+          "SK": {
+            "S": "print_id#67f4c93b-080c-4196-b095-6a120a221988#Face#2"
+          },
+          "oracle_text": {
+            "S": "As Agadeem, the Undercrypt enters the battlefield, you may pay 3 life. If you don't, it enters the battlefield tapped.\\n{T}: Add {B}."
+          },
+          "mana_cost": {
+            "S": ""
+          },
+          "type_line": {
+            "S": "Land"
+          },
+          "face_name": {
+            "S": "Agadeem, the Undercrypt"
+          },
+          "flavor_text": {
+            "S": "\"Here below the hedron fields, souls and secrets lie entombed.\"\\n—Vivias, Witch Vessel"
+          },
+          "image_url": {
+            "S": "https://cards.scryfall.io/png/back/6/7/67f4c93b-080c-4196-b095-6a120a221988.png?1604195226"
+          },
+          "colors": {
+            "S": "[]"
+          },
+          "data_type": {
+            "S": "Face"
+          }
+        },
+        {
+          "PK": {
+            "S": "oracle_id#562d71b9-1646-474e-9293-55da6947a758"
+          },
+          "SK": {
+            "S": "print_id#67f4c93b-080c-4196-b095-6a120a221988#Card"
+          },
+          "oracle_name": {
+            "S": "Agadeem's Awakening // Agadeem, the Undercrypt"
+          },
+          "set_name": {
+            "S": "Zendikar Rising"
+          },
+          "set_code": {
+            "S": "90"
+          },
+          "released_at": {
+            "S": "2020-09-25"
+          },
+          "rarity": {
+            "S": "MYTHIC"
+          },
+          "price": {
+            "S": "18.31"
+          },
+          "data_type": {
+            "S": "Card"
+          }
+        }
+      ],
+      "DataAccess": {
+        "MySql": {}
+      },
+      "SampleDataFormats": {},
+      "BillingMode": "PROVISIONED",
+      "ProvisionedCapacitySettings": {
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": 5,
+          "WriteCapacityUnits": 5
+        },
+        "AutoScalingRead": {
+          "ScalableTargetRequest": {
+            "MinCapacity": 1,
+            "MaxCapacity": 10,
+            "ServiceRole": "AWSServiceRoleForApplicationAutoScaling_DynamoDBTable"
+          },
+          "ScalingPolicyConfiguration": {
+            "TargetValue": 70
+          }
+        },
+        "AutoScalingWrite": {
+          "ScalableTargetRequest": {
+            "MinCapacity": 1,
+            "MaxCapacity": 10,
+            "ServiceRole": "AWSServiceRoleForApplicationAutoScaling_DynamoDBTable"
+          },
+          "ScalingPolicyConfiguration": {
+            "TargetValue": 70
+          }
+        }
+      }
+    },
+    {
+      "TableName": "Collections",
+      "KeyAttributes": {
+        "PartitionKey": {
+          "AttributeName": "PK",
+          "AttributeType": "S"
+        },
+        "SortKey": {
+          "AttributeName": "SK",
+          "AttributeType": "S"
+        }
+      },
+      "NonKeyAttributes": [
+        {
+          "AttributeName": "deck_id",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "card_instance_id",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "print_id",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "oracle_name",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "oracle_id",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "type_line",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "set_name",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "set_code",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "released_at",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "face_name",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "flavor_text",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "image_url",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "rarity",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "colors",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "price",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "GSI1SK",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "GSI2SK",
+          "AttributeType": "S"
+        }
+      ],
+      "TableFacets": [
+        {
+          "FacetName": "Collections",
+          "KeyAttributeAlias": {
+            "PartitionKeyAlias": "PK",
+            "SortKeyAlias": "SK"
+          },
+          "TableData": [
+            {
+              "PK": {
+                "S": "user_id#bfffb35f-a58c-438a-b3b5-eaf1ab66df54"
+              },
+              "SK": {
+                "S": "card_instance_id#c49f14df-a9e8-4644-ad51-4a3fc510b02b"
+              },
+              "deck_id": {
+                "S": "1"
+              },
+              "card_instance_id": {
+                "S": "c49f14df-a9e8-4644-ad51-4a3fc510b02b"
+              },
+              "print_id": {
+                "S": "67f4c93b-080c-4196-b095-6a120a221988"
+              },
+              "oracle_id": {
+                "S": "56719f6a-1a6c-4c0a-8d21-18f7d7350b68"
+              },
+              "GSI1SK": {
+                "S": "deck_id#1#card_instance_id#b8a528c9-fba7-4604-94da-814801d93b8d"
+              },
+              "GSI2SK": {
+                "S": "oracle_id#56719f6a-1a6c-4c0a-8d21-18f7d7350b68#card_instance_id#c49f14df-a9e8-4644-ad51-4a3fc510b02b"
+              }
+            },
+            {
+              "PK": {
+                "S": "user_id#bfffb35f-a58c-438a-b3b5-eaf1ab66df54"
+              },
+              "SK": {
+                "S": "card_instance_id#c50f14df-a9e8-4644-ad51-4a3fc510b02b"
+              },
+              "card_instance_id": {
+                "S": "c50f14df-a9e8-4644-ad51-4a3fc510b02b"
+              },
+              "print_id": {
+                "S": "68f4c93b-080c-4196-b095-6a120a221988"
+              },
+              "oracle_id": {
+                "S": "56719f6a-1a6c-4c0a-8d21-18f7d7350b68"
+              },
+              "GSI2SK": {
+                "S": "oracle_id#56719f6a-1a6c-4c0a-8d21-18f7d7350b68#card_instance_id#c49f14df-a9e8-4644-ad51-4a3fc510b02b"
+              }
+            },
+            {
+              "PK": {
+                "S": "user_id#bfffb35f-a58c-438a-b3b5-eaf1ab66df54"
+              },
+              "SK": {
+                "S": "card_instance_id#c51f14df-a9e8-4644-ad51-4a3fc510b02b"
+              },
+              "card_instance_id": {
+                "S": "c51f14df-a9e8-4644-ad51-4a3fc510b02b"
+              },
+              "print_id": {
+                "S": "69f4c93b-080c-4196-b095-6a120a221988"
+              },
+              "oracle_id": {
+                "S": "56719f6a-1a6c-4c0a-8d21-18f7d7350b68"
+              },
+              "GSI2SK": {
+                "S": "oracle_id#56719f6a-1a6c-4c0a-8d21-18f7d7350b68#card_instance_id#c49f14df-a9e8-4644-ad51-4a3fc510b02b"
+              }
+            },
+            {
+              "PK": {
+                "S": "user_id#bfffb35f-a58c-438a-b3b5-eaf1ab66df54"
+              },
+              "SK": {
+                "S": "card_instance_id#c52f14df-a9e8-4644-ad51-4a3fc510b02b"
+              },
+              "card_instance_id": {
+                "S": "c52f14df-a9e8-4644-ad51-4a3fc510b02b"
+              },
+              "print_id": {
+                "S": "70f4c93b-080c-4196-b095-6a120a221988"
+              },
+              "oracle_id": {
+                "S": "56719f6a-1a6c-4c0a-8d21-18f7d7350b68"
+              },
+              "GSI2SK": {
+                "S": "oracle_id#56719f6a-1a6c-4c0a-8d21-18f7d7350b68#card_instance_id#c49f14df-a9e8-4644-ad51-4a3fc510b02b"
+              }
+            },
+            {
+              "PK": {
+                "S": "user_id#bfffb35f-a58c-438a-b3b5-eaf1ab66df54"
+              },
+              "SK": {
+                "S": "card_instance_id#c53f14df-a9e8-4644-ad51-4a3fc510b02b"
+              },
+              "deck_id": {
+                "S": "1"
+              },
+              "card_instance_id": {
+                "S": "c53f14df-a9e8-4644-ad51-4a3fc510b02b"
+              },
+              "print_id": {
+                "S": "71f4c93b-080c-4196-b095-6a120a221988"
+              },
+              "oracle_id": {
+                "S": "56719f6a-1a6c-4c0a-8d21-18f7d7350b68"
+              },
+              "GSI1SK": {
+                "S": "deck_id#1#card_instance_id#b8a528c9-fba7-4604-94da-814801d93b8d"
+              },
+              "GSI2SK": {
+                "S": "oracle_id#56719f6a-1a6c-4c0a-8d21-18f7d7350b68#card_instance_id#c49f14df-a9e8-4644-ad51-4a3fc510b02b"
+              }
+            }
+          ],
+          "NonKeyAttributes": [
+            "deck_id",
+            "card_instance_id",
+            "print_id",
+            "oracle_id",
+            "GSI1SK",
+            "GSI2SK"
+          ],
+          "DataAccess": {
+            "MySql": {}
+          }
+        }
+      ],
+      "GlobalSecondaryIndexes": [
+        {
+          "IndexName": "GSI-Collection-Cards-In-Deck",
+          "KeyAttributes": {
+            "PartitionKey": {
+              "AttributeName": "PK",
+              "AttributeType": "S"
+            },
+            "SortKey": {
+              "AttributeName": "GSI1SK",
+              "AttributeType": "S"
+            }
+          },
+          "Projection": {
+            "ProjectionType": "ALL"
+          }
+        },
+        {
+          "IndexName": "GSI-Collection-OracleId",
+          "KeyAttributes": {
+            "PartitionKey": {
+              "AttributeName": "PK",
+              "AttributeType": "S"
+            },
+            "SortKey": {
+              "AttributeName": "GSI2SK",
+              "AttributeType": "S"
+            }
+          },
+          "Projection": {
+            "ProjectionType": "ALL"
+          }
+        }
+      ],
+      "DataAccess": {
+        "MySql": {}
+      },
+      "SampleDataFormats": {},
+      "BillingMode": "PROVISIONED",
+      "ProvisionedCapacitySettings": {
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": 5,
+          "WriteCapacityUnits": 5
+        },
+        "AutoScalingRead": {
+          "ScalableTargetRequest": {
+            "MinCapacity": 1,
+            "MaxCapacity": 10,
+            "ServiceRole": "AWSServiceRoleForApplicationAutoScaling_DynamoDBTable"
+          },
+          "ScalingPolicyConfiguration": {
+            "TargetValue": 70
+          }
+        },
+        "AutoScalingWrite": {
+          "ScalableTargetRequest": {
+            "MinCapacity": 1,
+            "MaxCapacity": 10,
+            "ServiceRole": "AWSServiceRoleForApplicationAutoScaling_DynamoDBTable"
+          },
+          "ScalingPolicyConfiguration": {
+            "TargetValue": 70
+          }
+        }
+      }
+    },
+    {
+      "TableName": "Deck",
+      "KeyAttributes": {
+        "PartitionKey": {
+          "AttributeName": "PK",
+          "AttributeType": "S"
+        },
+        "SortKey": {
+          "AttributeName": "SK",
+          "AttributeType": "S"
+        }
+      },
+      "NonKeyAttributes": [
+        {
+          "AttributeName": "deck_name",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "deck_card_id",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "card_location",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "oracle_name",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "oracle_text",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "mana_cost",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "type_line",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "set_name",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "set_code",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "released_at",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "face_name",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "flavor_text",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "image_url",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "rarity",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "colors",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "price",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "data_type",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "deck_id",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "oracle_id",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "card_instance_id",
+          "AttributeType": "S"
+        }
+      ],
+      "TableFacets": [
+        {
+          "FacetName": "decks",
+          "KeyAttributeAlias": {
+            "PartitionKeyAlias": "PK",
+            "SortKeyAlias": "SK"
+          },
+          "TableData": [
+            {
+              "PK": {
+                "S": "user_id#17fa2974-71ea-4195-8662-00eb1e88c505"
+              },
+              "SK": {
+                "S": "deck_id#99864351-b930-4cae-8cfa-4ac2746c3830#DeckCardId#4c1bf36e-907e-4a61-94cf-b41e73f23022"
+              },
+              "deck_name": {
+                "S": "My first deck"
+              },
+              "deck_card_id": {
+                "S": "4c1bf36e-907e-4a61-94cf-b41e73f23022"
+              },
+              "card_location": {
+                "S": "COMMANDER"
+              },
+              "deck_id": {
+                "S": "99864351-b930-4cae-8cfa-4ac2746c3830"
+              },
+              "oracle_id": {
+                "S": "56719f6a-1a6c-4c0a-8d21-18f7d7350b68"
+              },
+              "card_instance_id": {
+                "S": "c49f14df-a9e8-4644-ad51-4a3fc510b02b"
+              }
+            },
+            {
+              "PK": {
+                "S": "user_id#17fa2974-71ea-4195-8662-00eb1e88c505"
+              },
+              "SK": {
+                "S": "deck_id#99864351-b930-4cae-8cfa-4ac2746c3830#DeckCardId#7722e7f4-84ea-470c-a478-92d8990179a7"
+              },
+              "deck_name": {
+                "S": "My first deck"
+              },
+              "deck_card_id": {
+                "S": "7722e7f4-84ea-470c-a478-92d8990179a7"
+              },
+              "card_location": {
+                "S": "MAIN_DECK"
+              },
+              "deck_id": {
+                "S": "99864351-b930-4cae-8cfa-4ac2746c3830"
+              },
+              "oracle_id": {
+                "S": "56719f6a-1a6c-4c0a-8d21-18f7d7350b68"
+              }
+            },
+            {
+              "PK": {
+                "S": "user_id#17fa2974-71ea-4195-8662-00eb1e88c505"
+              },
+              "SK": {
+                "S": "deck_id#99864351-b930-4cae-8cfa-4ac2746c3830#DeckCardId#9d103277-26c0-4c76-9a44-b7ad4d4388d0"
+              },
+              "deck_name": {
+                "S": "My first deck"
+              },
+              "deck_card_id": {
+                "S": "9d103277-26c0-4c76-9a44-b7ad4d4388d0"
+              },
+              "card_location": {
+                "S": "MAIN_DECK"
+              },
+              "deck_id": {
+                "S": "99864351-b930-4cae-8cfa-4ac2746c3830"
+              },
+              "oracle_id": {
+                "S": "56719f6a-1a6c-4c0a-8d21-18f7d7350b68"
+              }
+            },
+            {
+              "PK": {
+                "S": "user_id#17fa2974-71ea-4195-8662-00eb1e88c505"
+              },
+              "SK": {
+                "S": "deck_id#99864351-b930-4cae-8cfa-4ac2746c3830#DeckCardId#b68c20f0-bb04-4d66-a0e3-8155516d960b"
+              },
+              "deck_name": {
+                "S": "My first deck"
+              },
+              "deck_card_id": {
+                "S": "b68c20f0-bb04-4d66-a0e3-8155516d960b"
+              },
+              "card_location": {
+                "S": "SIDE_DECK"
+              },
+              "deck_id": {
+                "S": "99864351-b930-4cae-8cfa-4ac2746c3830"
+              },
+              "oracle_id": {
+                "S": "56719f6a-1a6c-4c0a-8d21-18f7d7350b68"
+              }
+            },
+            {
+              "PK": {
+                "S": "user_id#18fa2974-71ea-4195-8662-00eb1e88c505"
+              },
+              "SK": {
+                "S": "deck_id#914fb4fc-db72-44f9-8304-763ee8a0bd8c#DeckCardId#2cca6595-085d-4466-ae85-fdf69b3bdb1d"
+              },
+              "deck_name": {
+                "S": "Bob's first deck"
+              },
+              "deck_card_id": {
+                "S": "2cca6595-085d-4466-ae85-fdf69b3bdb1d"
+              },
+              "card_location": {
+                "S": "COMMANDER"
+              },
+              "deck_id": {
+                "S": "914fb4fc-db72-44f9-8304-763ee8a0bd8c"
+              },
+              "oracle_id": {
+                "S": "56719f6a-1a6c-4c0a-8d21-18f7d7350b68"
+              }
+            },
+            {
+              "PK": {
+                "S": "user_id#18fa2974-71ea-4195-8662-00eb1e88c505"
+              },
+              "SK": {
+                "S": "deck_id#914fb4fc-db72-44f9-8304-763ee8a0bd8c#DeckCardId#c97b47e4-8c16-4cb3-a627-7207fea7aef2"
+              },
+              "deck_name": {
+                "S": "Bob's first deck"
+              },
+              "deck_card_id": {
+                "S": "c97b47e4-8c16-4cb3-a627-7207fea7aef2"
+              },
+              "card_location": {
+                "S": "MAIN_DECK"
+              },
+              "deck_id": {
+                "S": "914fb4fc-db72-44f9-8304-763ee8a0bd8c"
+              },
+              "oracle_id": {
+                "S": "56719f6a-1a6c-4c0a-8d21-18f7d7350b68"
+              },
+              "card_instance_id": {
+                "S": "c50f14df-a9e8-4644-ad51-4a3fc510b02b"
+              }
+            }
+          ],
+          "NonKeyAttributes": [
+            "deck_name",
+            "deck_card_id",
+            "card_location",
+            "deck_id",
+            "oracle_id",
+            "card_instance_id"
+          ],
+          "DataAccess": {
+            "MySql": {}
+          }
+        }
+      ],
+      "DataAccess": {
+        "MySql": {}
+      },
+      "SampleDataFormats": {
+        "user_id": [
+          "identifiers",
+          "UUID"
+        ],
+        "deck_id": [
+          "identifiers",
+          "UUID"
+        ]
+      },
+      "BillingMode": "PROVISIONED",
+      "ProvisionedCapacitySettings": {
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": 5,
+          "WriteCapacityUnits": 5
+        },
+        "AutoScalingRead": {
+          "ScalableTargetRequest": {
+            "MinCapacity": 1,
+            "MaxCapacity": 10,
+            "ServiceRole": "AWSServiceRoleForApplicationAutoScaling_DynamoDBTable"
+          },
+          "ScalingPolicyConfiguration": {
+            "TargetValue": 70
+          }
+        },
+        "AutoScalingWrite": {
+          "ScalableTargetRequest": {
+            "MinCapacity": 1,
+            "MaxCapacity": 10,
+            "ServiceRole": "AWSServiceRoleForApplicationAutoScaling_DynamoDBTable"
+          },
+          "ScalingPolicyConfiguration": {
+            "TargetValue": 70
+          }
+        }
+      }
+    }
+  ]
+}

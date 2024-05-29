@@ -1,0 +1,202 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Card-service
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+
+Globals:
+  Function:
+    Timeout: 10
+    MemorySize: 128
+    Handler: app.lambda_handler
+    Runtime: python3.9
+    Architectures:
+      - x86_64
+    Tracing: Active
+    Environment:
+      Variables:
+        EVENT_BUS_ARN:
+          Fn::ImportValue:
+            !Sub "common-service-${Stage}-MTGEventBus"
+        #update frequency in days
+        CARDS_UPDATE_FREQUENCY: "7"
+
+Parameters:
+  Stage:
+    Type: String
+    Default: development
+
+Conditions:
+  IsNotDevBranch:
+    Fn::Or:
+      - Fn::Equals: [ !Ref Stage, production ]
+      - Fn::Equals: [ !Ref Stage, staging ]
+
+Resources:
+  MTGCardApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub "${Stage}-mtg-card-api"
+      StageName: !Ref Stage
+      OpenApiVersion: '2.0'
+      DefinitionBody:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location: ./swagger-spec.json
+      Auth:
+        Authorizers:
+          CognitoAuth:
+            UserPoolArn:
+              Fn::ImportValue: !Sub user-service-${Stage}-cognito-user-pool
+            Identity:
+              Header: Authorization
+        DefaultAuthorizer: CognitoAuth
+      MethodSettings:
+        - ResourcePath: '/*'
+          HttpMethod: '*'
+          LoggingLevel: INFO
+          MetricsEnabled: true
+      AccessLogSetting:
+        DestinationArn: !GetAtt AccessLogGroup.Arn
+        Format: '{"requestTime":"$context.requestTime","requestId":"$context.requestId","httpMethod":"$context.httpMethod","path":"$context.path","routeKey":"$context.routeKey","status":$context.status,"responseLatency":$context.responseLatency}'
+
+  AccessLogGroup:
+    Type: AWS::Logs::LogGroup
+
+  MTGCardApiUrlParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /${Stage}/MTGCardApi/url
+      Type: String
+      Value: !Sub "https://${MTGCardApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
+
+  MTGCardDynamoDBTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: RemoveAt
+        Enabled: true
+      BillingMode: PAY_PER_REQUEST
+      TableName: !Sub "${Stage}-mtg-card-db"
+
+  RenewEntitiesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "card-service-${Stage}-RenewEntitiesFunction"
+      CodeUri: functions/renew_entities/
+      MemorySize: 550
+      Timeout: 360
+      Environment:
+        Variables:
+          DYNAMODB_TABLE_NAME: !Ref MTGCardDynamoDBTable
+      Policies:
+        - AmazonDynamoDBFullAccess
+
+  GetCardsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "card-service-${Stage}-GetCardsFunction"
+      CodeUri: functions/get_cards/
+      Environment:
+        Variables:
+          DYNAMODB_TABLE_NAME: !Ref MTGCardDynamoDBTable
+      Policies:
+        - AmazonDynamoDBReadOnlyAccess
+      Events:
+        ApiRequest:
+          Type: Api
+          Properties:
+            RestApiId: !Ref "MTGCardApi"
+            Path: /api/cards/{oracle_id}
+            Method: get
+
+  SearchCardsFuncion:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "card-service-${Stage}-SearchCardsFunction"
+      CodeUri: functions/Search/
+      Environment:
+        Variables:
+          DYNAMODB_TABLE_NAME: !Ref MTGCardDynamoDBTable
+      Policies:
+        - AmazonDynamoDBReadOnlyAccess
+      Events:
+        ApiRequest:
+          Type: Api
+          Properties:
+            RestApiId: !Ref "MTGCardApi"
+            Path: /api/cards/search
+            Method: get
+
+  GetCardFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "card-service-${Stage}-GetCardFunction"
+      CodeUri: functions/get_card/
+      Environment:
+        Variables:
+          DYNAMODB_TABLE_NAME: !Ref MTGCardDynamoDBTable
+      Policies:
+        - AmazonDynamoDBReadOnlyAccess
+      Events:
+        ApiRequest:
+          Type: Api
+          Properties:
+            RestApiId: !Ref "MTGCardApi"
+            Path: /api/cards/{oracle_id}/{print_id}
+            Method: get
+
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${Stage}-scheduler--trigger-function-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "scheduler.amazonaws.com"
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: !Sub "${Stage}-InvokeLambdaFunctionPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Action: "lambda:InvokeFunction"
+                Effect: "Allow"
+                Resource: !GetAtt RenewEntitiesFunction.Arn
+
+  CardSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      State: !If [IsNotDevBranch, "ENABLED", "DISABLED"]
+      FlexibleTimeWindow:
+        Mode: 'OFF'
+      ScheduleExpression: "cron(0 5 * * ? *)"
+      ScheduleExpressionTimezone: "GMT+1"
+      Target:
+        Arn: !GetAtt RenewEntitiesFunction.Arn
+        RoleArn: !GetAtt SchedulerRole.Arn
+
+Outputs:
+  MTGCardApiUrl:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${MTGCardApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
+  MTGCardApi:
+    Description: "Api gateway"
+    Value: !Ref MTGCardApi
+    Export:
+      Name:
+        'Fn::Sub': '${AWS::StackName}-api'

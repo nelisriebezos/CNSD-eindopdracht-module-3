@@ -1,0 +1,46 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: common-service
+
+Globals:
+  Function:
+    Timeout: 3
+    MemorySize: 128
+    Handler: app.lambda_handler
+    Runtime: python3.9
+    Architectures:
+      - x86_64
+    Tracing: Active
+  Api:
+    TracingEnabled: true
+
+Parameters:
+  Stage:
+    Type: String
+    Default: staging
+
+Resources:
+  MTGEventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: !Sub "${Stage}-mtg-event-bus"
+
+  EventBusPolicy:
+    Type: AWS::Events::EventBusPolicy
+    Properties:
+      EventBusName:
+        Ref: "MTGEventBus"
+      StatementId: !Sub "${Stage}AllowToPutEvents"
+      Statement:
+        Effect: "Allow"
+        Principal: "*"
+        Action: "events:PutEvents"
+        Resource: !GetAtt MTGEventBus.Arn
+
+Outputs:
+  MTGEventBus:
+    Description: "Event bus"
+    Value: !Ref MTGEventBus
+    Export:
+      Name:
+        'Fn::Sub': '${AWS::StackName}-MTGEventBus'

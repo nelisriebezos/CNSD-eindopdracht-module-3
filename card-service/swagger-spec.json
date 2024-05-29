@@ -1,0 +1,191 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "MTGAPI",
+    "version": "1.0"
+  },
+  "paths": {
+    "/api/cards/{oracle_id}": {
+      "get": {
+        "security": [
+          { "cognito": [] }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oracle_id",
+            "type": "string",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "httpMethod": "POST",
+          "uri": {
+            "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetCardsFunction.Arn}/invocations"
+          },
+          "passthroughBehavior": "when_no_match",
+          "type": "aws_proxy"
+        }
+      }
+    },
+    "/api/cards/{oracle_id}/{print_id}": {
+      "get": {
+        "security": [
+          { "cognito": [] }
+        ],
+        "summary": "Get MTG Card by Oracle ID and Print ID",
+        "parameters": [
+          {
+            "name": "oracle_id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "Oracle ID of the card"
+          },
+          {
+            "name": "print_id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "Print ID of the card"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status_code": {
+                  "type": "string",
+                  "example": "200"
+                },
+                "body": {
+                  "type": "array",
+                  "example": [
+                    {
+                      "PK": "OracleId#562d71b9-1646-474e-9293-55da6947a758",
+                      "SK": "PrintId#67f4c93b-080c-4196-b095-6a120a221988#Card",
+                      "OracleId": "562d71b9-1646-474e-9293-55da6947a758",
+                      "PrintId": "67f4c93b-080c-4196-b095-6a120a221988",
+                      "OracleName": "Agadeem's Awakening // Agadeem, the Undercrypt",
+                      "SetName": "Zendikar Rising",
+                      "ReleasedAt": "2020-09-25",
+                      "Rarity": "mythic",
+                      "Price": "18.27",
+                      "DataType": "Card"
+                    },
+                    {
+                      "PK": "OracleId#562d71b9-1646-474e-9293-55da6947a758",
+                      "SK": "PrintId#67f4c93b-080c-4196-b095-6a120a221988#Face#1",
+                      "OracleId": "562d71b9-1646-474e-9293-55da6947a758",
+                      "PrintId": "67f4c93b-080c-4196-b095-6a120a221988",
+                      "OracleText": "Return from your graveyard to the battlefield any number of target creature cards that each have a different mana value X or less.",
+                      "ManaCost": "{X}{B}{B}{B}",
+                      "TypeLine": "Sorcery",
+                      "FaceName": "Agadeem's Awakening",
+                      "FlavorText": "\"Now is the death-hour, just before dawn. Wake, sleepers, and haunt the living!\"\n—Vivias, Witch Vessel,",
+                      "ImageUrl": "https://cards.scryfall.io/png/back/6/7/67f4c93b-080c-4196-b095-6a120a221988.png?1604195226",
+                      "Colors": [
+                        "B"
+                      ],
+                      "DataType": "Face"
+                    },
+                    {
+                      "PK": "OracleId#562d71b9-1646-474e-9293-55da6947a758",
+                      "SK": "PrintId#67f4c93b-080c-4196-b095-6a120a221988#Face#2",
+                      "OracleId": "562d71b9-1646-474e-9293-55da6947a758",
+                      "PrintId": "67f4c93b-080c-4196-b095-6a120a221988",
+                      "OracleText": "As Agadeem, the Undercrypt enters the battlefield, you may pay 3 life. If you don't, it enters the battlefield tapped.\n{T}: Add {B}.",
+                      "ManaCost": "",
+                      "TypeLine": "Land",
+                      "FaceName": "Agadeem, the Undercrypt",
+                      "FlavorText": "\"Here below the hedron fields, souls and secrets lie entombed.\"\n—Vivias, Witch Vessel",
+                      "ImageUrl": "https://cards.scryfall.io/png/front/6/7/67f4c93b-080c-4196-b095-6a120a221988.png?1604195226",
+                      "Colors": [],
+                      "DataType": "Face"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Card not found",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status_code": {
+                  "type": "string",
+                  "example": "404"
+                },
+                "body": {
+                  "type": "string",
+                  "example": "Card not found"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status_code": {
+                  "type": "string",
+                  "example": "500"
+                },
+                "body": {
+                  "type": "string",
+                  "example": "Server error while fetching card."
+                }
+              }
+            }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "httpMethod": "POST",
+          "uri": {
+            "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetCardFunction.Arn}/invocations"
+          },
+          "passthroughBehavior": "when_no_match",
+          "type": "aws_proxy"
+        }
+      }
+    },
+    "/api/cards/search": {
+      "get": {
+        "parameters" : [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses" : {
+          "200": {
+            "description": "Succefull response"
+          },
+          "401": {
+            "description": "Query string parameter not provided"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "x-amazon-apigateway-integration" : {
+          "httpMethod" : "POST",
+          "uri" : {"Fn::Sub" : "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${SearchCardsFuncion.Arn}/invocations"},
+          "passthroughBehavior" : "when_no_match",
+          "type" : "aws_proxy"
+        }
+      }
+    }
+  }
+}

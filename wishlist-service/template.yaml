@@ -1,0 +1,103 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Wishlist-service
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 10
+    MemorySize: 128
+    Handler: app.lambda_handler
+    Runtime: python3.9
+    Architectures:
+      - x86_64
+    Tracing: Active
+    Environment:
+      Variables:
+        EVENT_BUS_ARN:
+          Fn::ImportValue:
+            !Sub "common-service-${Stage}-MTGEventBus"
+
+Parameters:
+  Stage:
+    Type: String
+    Default: development
+
+Resources:
+  MTGWishlistApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub "${Stage}-mtg-wishlist-api"
+      StageName: !Ref Stage
+      OpenApiVersion: '2.0'
+      DefinitionBody:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location: ./swagger-spec.json
+      Auth:
+        Authorizers:
+          CognitoAuth:
+            UserPoolArn:
+              Fn::ImportValue: !Sub user-service-${Stage}-cognito-user-pool
+            Identity:
+              Header: Authorization
+        DefaultAuthorizer: CognitoAuth
+      MethodSettings:
+        - ResourcePath: '/*'
+          HttpMethod: '*'
+          LoggingLevel: INFO
+          MetricsEnabled: true
+      AccessLogSetting:
+        DestinationArn: !GetAtt AccessLogGroup.Arn
+        Format: '{"requestTime":"$context.requestTime","requestId":"$context.requestId","httpMethod":"$context.httpMethod","path":"$context.path","routeKey":"$context.routeKey","status":$context.status,"responseLatency":$context.responseLatency}'
+
+  AccessLogGroup:
+    Type: AWS::Logs::LogGroup
+
+  MTGWishlistApiUrlParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /${Stage}/MTGWishlistApi/url
+      Type: String
+      Value: !Sub "https://${MTGWishlistApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
+
+  MTGWishlistDynamoDBTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    Properties:
+      TableName: !Sub "${Stage}-mtg-wishlist-db"
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+
+  PingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/Ping/
+      Events:
+        HelloWorld:
+          Type: Api
+          Properties:
+            RestApiId: !Ref "MTGWishlistApi"
+            Path: /ping
+            Method: get
+
+Outputs:
+  MTGWishlistApiUrl:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${MTGWishlistApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
+  MTGWishlistApi:
+    Description: "Api gateway"
+    Value: !Ref MTGWishlistApi
+    Export:
+      Name:
+        'Fn::Sub': '${AWS::StackName}-api'

@@ -1,0 +1,261 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "MTGAPI",
+    "version": "1.0"
+  },
+  "paths": {
+    "/api/collections": {
+      "get": {
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pk-last-evaluated",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "sk-last-evaluated",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "type": "number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Succefull response",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status_code": {
+                  "type": "string",
+                  "example": "200"
+                },
+                "body": {
+                  "type": "array",
+                  "example": {
+                    "Items": {
+                      "PK": "UserId#{user_id}",
+                      "SK": "CardInstanceId#{card_instance_id}#{item_type}",
+                      "PrintId": "{PrintId}",
+                      "CardInstanceId": "{card_instance_id}",
+                      "Condition": "MINT",
+                      "DataType": "DataType"
+                    },
+                    "pk-last-evaluated": "UserId#{user_id}",
+                    "sk-last-evaluated": "CardInstanceId#{card_instance_id}#{item_type}"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "JWT token not provided"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "httpMethod": "POST",
+          "uri": {
+            "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${SearchFunction.Arn}/invocations"
+          },
+          "passthroughBehavior": "when_no_match",
+          "type": "aws_proxy"
+        }
+      },
+      "post": {
+        "summary": "Add a card to the collection",
+        "description": "This endpoint allows a user to add a card to their collection.",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "oracle_id": {
+                  "type": "string"
+                },
+                "print_id": {
+                  "type": "string"
+                },
+                "condition": {
+                  "type": "string"
+                },
+                "deck_id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "oracle_id",
+                "print_id",
+                "condition"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Card added to collection successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status_code": {
+                  "type": "string",
+                  "example": "201"
+                },
+                "body": {
+                  "type": "array",
+                  "example": {
+                    "PK": "UserId#{user_id}",
+                    "SK": "CardInstanceId#{card_instance_id}#{item_type}",
+                    "PrintId": "{PrintId}",
+                    "CardInstanceId": "{card_instance_id}",
+                    "Condition": "MINT",
+                    "DataType": "DataType"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status_code": {
+                  "type": "string",
+                  "example": "500"
+                },
+                "body": {
+                  "type": "string",
+                  "example": "Server error while fetching card."
+                }
+              }
+            }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "httpMethod": "POST",
+          "uri": {
+            "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AddCardToCollectionFunction.Arn}/invocations"
+          },
+          "passthroughBehavior": "when_no_match",
+          "type": "aws_proxy"
+        }
+      }
+    },
+    "/api/collections/{instance_id}": {
+      "delete": {
+        "security": [
+          {
+            "cognito": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "instance_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful deletion of card instance"
+          },
+          "404": {
+            "description": "Card instance not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "httpMethod": "POST",
+          "uri": {
+            "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DeleteCardInstanceFromCollection.Arn}/invocations"
+          },
+          "passthroughBehavior": "when_no_match",
+          "type": "aws_proxy"
+        }
+      },
+      "get": {
+        "security": [
+          {
+            "cognito": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "instance_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "NOT_FOUND"
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "httpMethod": "POST",
+          "uri": {
+            "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetCollectionInstance.Arn}/invocations"
+          },
+          "passthroughBehavior": "when_no_match",
+          "type": "aws_proxy"
+        }
+      }
+    }
+  }
+}

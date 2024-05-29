@@ -1,0 +1,95 @@
+name: Test and deploy an environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: The environment name for the stack. Only lower-case and no spaces!
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      SONAR_TOKEN_CARD:
+        required: true
+      SONAR_TOKEN_USER:
+        required: true
+      SONAR_TOKEN_DECK:
+        required: true
+      SONAR_TOKEN_WISHLIST:
+        required: true
+      SONAR_TOKEN_COLLECTION:
+        required: true
+      SONAR_TOKEN_FRONT_END:
+        required: true
+
+jobs:
+  test-back-end-services:
+    strategy:
+      matrix:
+        include:
+          - service: card
+            path: ./card-service
+            sonarQubeSecret: SONAR_TOKEN_CARD
+          - service: user
+            path: ./user-service
+            sonarQubeSecret: SONAR_TOKEN_USER
+          - service: deck
+            path: ./deck-service
+            sonarQubeSecret: SONAR_TOKEN_DECK
+          - service: wishlist
+            path: ./wishlist-service
+            sonarQubeSecret: SONAR_TOKEN_WISHLIST
+          - service: collection
+            path: ./collection-service
+            sonarQubeSecret: SONAR_TOKEN_COLLECTION
+    uses: ./.github/workflows/test-back-end.yml
+    with:
+      path: ${{ matrix.path }}
+      coverage-file: coverage-${{ matrix.service }}.xml
+    secrets:
+      SONAR_QUBE_TOKEN: ${{ secrets[matrix.sonarQubeSecret] }}
+
+  unit-test-front-end:
+    uses: ./.github/workflows/test-front-end-unit.yml
+    secrets:
+      SONAR_QUBE_TOKEN: ${{ secrets.SONAR_TOKEN_FRONT_END }}
+
+  deploy-backend-services:
+    needs: [test-back-end-services, unit-test-front-end]
+    uses: ./.github/workflows/deploy-all-backend-services.yml
+    with:
+      environment: ${{ inputs.environment }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+  functional-test-front-end:
+    needs: deploy-backend-services
+    uses: ./.github/workflows/test-front-end-functional.yml
+
+  deploy-front-end:
+    needs: deploy-backend-services
+    uses: ./.github/workflows/release-front-end-pipeline.yml
+    with:
+      environment: ${{ inputs.environment }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+  deploy-monitoring-service:
+    needs: deploy-front-end
+    uses: ./.github/workflows/release-back-end-pipeline.yml
+    with:
+      service-name: monitoring-service
+      environment: ${{ inputs.environment }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

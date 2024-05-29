@@ -1,0 +1,1585 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: monitoring-service
+
+Globals:
+  Function:
+    Timeout: 3
+    MemorySize: 128
+    Handler: app.lambda_handler
+    Runtime: python3.9
+    Architectures:
+      - x86_64
+    Tracing: Active
+  Api:
+    TracingEnabled: true
+
+Parameters:
+  Stage:
+    Type: String
+    Default: development
+
+Resources:
+  DragonDashboard:
+    Type: 'AWS::CloudWatch::Dashboard'
+    Properties:
+      DashboardName: !Sub 'Dragon-Dashboard-${Stage}'
+      DashboardBody: !Sub
+        - '{
+               "widgets": [
+                   {
+                       "height": 2,
+                       "width": 24,
+                       "y": 0,
+                       "x": 0,
+                       "type": "text",
+                       "properties": {
+                           "markdown": "# Summary\n## Api`s \n"
+                       }
+                   },
+                   {
+                       "height": 1,
+                       "width": 24,
+                       "y": 18,
+                       "x": 0,
+                       "type": "text",
+                       "properties": {
+                           "markdown": "## Card-service\n"
+                       }
+                   },
+                   {
+                       "height": 5,
+                       "width": 9,
+                       "y": 2,
+                       "x": 0,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(),0)", "label": "", "region": "${AWS::Region}" } ],
+                               [ "AWS/ApiGateway", "Count", "ApiName", "${Stage}-mtg-user-api", { "region": "${AWS::Region}", "visible": false, "label": "User-Api" } ],
+                               [ "...", "${Stage}-mtg-wishlist-api", { "region": "${AWS::Region}", "visible": false, "label": "Wishlist-Api" } ],
+                               [ "...", "${Stage}-mtg-collection-api", { "region": "${AWS::Region}", "visible": false, "label": "Collection-Api" } ],
+                               [ "...", "${Stage}-mtg-deck-api", { "region": "${AWS::Region}", "visible": false, "label": "Deck-Api" } ],
+                               [ "...", "${Stage}-mtg-card-api", { "region": "${AWS::Region}", "visible": false, "label": "Card-Api" } ]
+                           ],
+                           "view": "timeSeries",
+                           "title": "Api - All Requests (per 5 mins)",
+                           "region": "${AWS::Region}",
+                           "stat": "SampleCount",
+                           "period": 300,
+                           "setPeriodToTimeRange": false,
+                           "stacked": false,
+                           "sparkline": true,
+                           "trend": true,
+                           "liveData": true,
+                           "legend": {
+                               "position": "bottom"
+                           },
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 5,
+                       "width": 9,
+                       "y": 2,
+                       "x": 15,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(),0)", "label": "", "region": "${AWS::Region}" } ],
+                               [ "AWS/ApiGateway", "Latency", "ApiName", "${Stage}-mtg-user-api", { "region": "${AWS::Region}", "visible": false, "label": "User-Api" } ],
+                               [ "...", "${Stage}-mtg-wishlist-api", { "label": "Wishlist-Api", "visible": false, "region": "${AWS::Region}" } ],
+                               [ "...", "${Stage}-mtg-collection-api", { "label": "Collection-Api", "visible": false, "region": "${AWS::Region}" } ],
+                               [ "...", "${Stage}-mtg-deck-api", { "label": "Deck-Api", "visible": false, "region": "${AWS::Region}" } ],
+                               [ "...", "${Stage}-mtg-card-api", { "label": "Card-Api", "visible": false, "region": "${AWS::Region}" } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "period": 300,
+                           "stat": "Average",
+                           "title": "Api - Average Latency (per 5 mins)",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Milliseconds",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 5,
+                       "width": 9,
+                       "y": 7,
+                       "x": 0,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(),0)", "label": "", "region": "${AWS::Region}" } ],
+                               [ "AWS/CloudFront", "Requests", "Region", "Global", "DistributionId", "${CloudFrontDistributionId}", { "region": "${AWS::Region}", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "title": "Cloudfront - All Requests (per 5 mins)",
+                           "region": "${AWS::Region}",
+                           "stat": "Sum",
+                           "period": 300,
+                           "setPeriodToTimeRange": false,
+                           "stacked": false,
+                           "sparkline": true,
+                           "trend": true,
+                           "liveData": true,
+                           "legend": {
+                               "position": "bottom"
+                           },
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 5,
+                       "width": 6,
+                       "y": 2,
+                       "x": 9,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(100*METRICS(), 0)", "label": "", "region": "${AWS::Region}" } ],
+                               [ "AWS/ApiGateway", "5XXError", "ApiName", "${Stage}-mtg-user-api", { "label": "User-Api", "visible": false, "region": "${AWS::Region}" } ],
+                               [ "...", "${Stage}-mtg-wishlist-api", { "label": "Wishlist-Api", "visible": false, "region": "${AWS::Region}" } ],
+                               [ "...", "${Stage}-mtg-collection-api", { "label": "Collection-Api", "visible": false, "region": "${AWS::Region}" } ],
+                               [ "...", "${Stage}-mtg-deck-api", { "label": "Deck-Api", "visible": false, "region": "${AWS::Region}" } ],
+                               [ "...", "${Stage}-mtg-card-api", { "label": "Card-Api", "visible": false, "region": "${AWS::Region}" } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "stat": "Sum",
+                           "title": "Api - Total Errors (per 5 mins)",
+                           "period": 300,
+                           "yAxis": {
+                               "left": {
+                                   "label": "%",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 5,
+                       "width": 6,
+                       "y": 7,
+                       "x": 9,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "region": "${AWS::Region}" } ],
+                               [ "AWS/CloudFront", "TotalErrorRate", "Region", "Global", "DistributionId", "${CloudFrontDistributionId}", { "visible": false, "region": "${AWS::Region}" } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "stat": "Sum",
+                           "title": "Cloudfront - Total Errors (per 5 mins)",
+                           "period": 300,
+                           "yAxis": {
+                               "left": {
+                                   "label": "%",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 19,
+                       "x": 0,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1" } ],
+                               [ "AWS/Lambda", "Invocations", "FunctionName", "card-service-production-RenewEntitiesFunction", { "region": "${AWS::Region}", "yAxis": "left", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "period": 300,
+                           "stat": "Sum",
+                           "title": "Import Scryfall data invocations",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 25,
+                       "x": 0,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1" } ],
+                               [ "AWS/Lambda", "Duration", "FunctionName", "card-service-${Stage}-RenewEntitiesFunction", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "title": "Import Scryfall data Duration",
+                           "period": 300,
+                           "stat": "Average",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Miliseconds",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 31,
+                       "x": 0,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1", "color": "#d62728", "region": "${AWS::Region}" } ],
+                               [ "AWS/Lambda", "Errors", "FunctionName", "card-service-${Stage}-RenewEntitiesFunction", { "region": "${AWS::Region}", "id": "m1", "visible": false, "stat": "Sum" } ]
+                           ],
+                           "view": "gauge",
+                           "region": "${AWS::Region}",
+                           "period": 300,
+                           "stat": "Sum",
+                           "setPeriodToTimeRange": true,
+                           "yAxis": {
+                               "left": {
+                                   "min": 0,
+                                   "max": 1
+                               }
+                           },
+                           "stacked": false,
+                           "sparkline": false,
+                           "trend": false,
+                           "legend": {
+                               "position": "bottom"
+                           },
+                           "title": "Import Scryfall data Errors"
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 19,
+                       "x": 18,
+                       "type": "metric",
+                       "properties": {
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "metrics": [
+                               [ "AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", "${Stage}-mtg-card-db", { "region": "${AWS::Region}" } ],
+                               [ ".", "ConsumedWriteCapacityUnits", ".", ".", { "region": "${AWS::Region}" } ]
+                           ],
+                           "region": "${AWS::Region}",
+                           "title": "Card-service Dynamo",
+                           "period": 300
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 25,
+                       "x": 18,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1", "region": "${AWS::Region}" } ],
+                               [ "AWS/ApiGateway", "Count", "ApiName", "${Stage}-mtg-card-api", { "id": "m1", "visible": false, "region": "${AWS::Region}" } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "stat": "Sum",
+                           "period": 300,
+                           "title": "Card-service Api-gateway",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 19,
+                       "x": 12,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1", "region": "${AWS::Region}" } ],
+                               [ "AWS/Lambda", "Invocations", "FunctionName", "card-service-${Stage}-GetCardsFunction", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "title": "Get cards function Invocations",
+                           "period": 300,
+                           "stat": "Sum",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 25,
+                       "x": 12,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1" } ],
+                               [ "AWS/Lambda", "Duration", "FunctionName", "card-service-${Stage}-GetCardsFunction", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "title": "Get cards function Duration",
+                           "period": 300,
+                           "stat": "Average",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Miliseconds",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 31,
+                       "x": 12,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1", "region": "${AWS::Region}" } ],
+                               [ "AWS/Lambda", "Errors", "FunctionName", "card-service-${Stage}-GetCardsFunction", { "id": "m1", "region": "${AWS::Region}", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "stat": "Sum",
+                           "period": 300,
+                           "title": "Get cards function Errors",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 19,
+                       "x": 6,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1", "region": "${AWS::Region}" } ],
+                               [ "AWS/Lambda", "Invocations", "FunctionName", "card-service-${Stage}-GetCardFunction", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "title": "Get card function Invocations",
+                           "period": 300,
+                           "stat": "Sum",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 25,
+                       "x": 6,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1" } ],
+                               [ "AWS/Lambda", "Duration", "FunctionName", "card-service-${Stage}-GetCardFunction", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "period": 300,
+                           "title": "Get card function Duration",
+                           "stat": "Average",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Miliseconds",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 31,
+                       "x": 6,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1", "region": "${AWS::Region}" } ],
+                               [ "AWS/Lambda", "Errors", "FunctionName", "card-service-${Stage}-GetCardFunction", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "period": 300,
+                           "stat": "Sum",
+                           "title": "Get card function Errors",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 1,
+                       "width": 24,
+                       "y": 37,
+                       "x": 0,
+                       "type": "text",
+                       "properties": {
+                           "markdown": "## Collection-service"
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 38,
+                       "x": 0,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1" } ],
+                               [ "AWS/Lambda", "Invocations", "FunctionName", "collection-service-${Stage}-AddCardToCollectionFunction", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "title": "Add card to collection function Invocations",
+                           "period": 300,
+                           "stat": "Sum",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 44,
+                       "x": 0,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1" } ],
+                               [ "AWS/Lambda", "Duration", "FunctionName", "collection-service-${Stage}-AddCardToCollectionFunction", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "period": 300,
+                           "title": "Add card to collection function Duration",
+                           "stat": "Average",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Miliseconds",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 50,
+                       "x": 0,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1", "region": "${AWS::Region}" } ],
+                               [ "AWS/Lambda", "Errors", "FunctionName", "collection-service-${Stage}-AddCardToCollectionFunction", { "id": "m1", "region": "${AWS::Region}", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "stat": "Sum",
+                           "period": 300,
+                           "title": "Add card to collection function Errors",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 38,
+                       "x": 6,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1" } ],
+                               [ "AWS/Lambda", "Invocations", "FunctionName", "collection-service-${Stage}-SearchCardsFunction", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "title": "Get collection function Invocations",
+                           "period": 300,
+                           "stat": "Sum",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 44,
+                       "x": 6,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1" } ],
+                               [ "AWS/Lambda", "Duration", "FunctionName", "collection-service-${Stage}-SearchCardsFunction", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "period": 300,
+                           "title": "Get collection function Duration",
+                           "stat": "Average",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Miliseconds",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 50,
+                       "x": 6,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1", "region": "${AWS::Region}" } ],
+                               [ "AWS/Lambda", "Errors", "FunctionName", "collection-service-${Stage}-SearchCardsFunction", { "id": "m1", "region": "${AWS::Region}", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "stat": "Sum",
+                           "period": 300,
+                           "title": "Get collection function Errors",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 38,
+                       "x": 12,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1" } ],
+                               [ "AWS/Lambda", "Invocations", "FunctionName", "collection-service-${Stage}-GetCollectionInstanceFunction", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "title": "Get instance function Invocations",
+                           "period": 300,
+                           "stat": "Sum",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 44,
+                       "x": 12,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1" } ],
+                               [ "AWS/Lambda", "Duration", "FunctionName", "collection-service-${Stage}-GetCollectionInstanceFunction", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "period": 300,
+                           "title": "Get instance function Duration",
+                           "stat": "Average",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Miliseconds",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 50,
+                       "x": 12,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1", "region": "${AWS::Region}" } ],
+                               [ "AWS/Lambda", "Errors", "FunctionName", "collection-service-${Stage}-GetCollectionInstanceFunction", { "id": "m1", "region": "${AWS::Region}", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "stat": "Sum",
+                           "period": 300,
+                           "title": "Get instance function Errors",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 38,
+                       "x": 18,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1" } ],
+                               [ "AWS/Lambda", "Invocations", "FunctionName", "collection-service-${Stage}-Search", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "title": "Search function Invocations",
+                           "period": 300,
+                           "stat": "Sum",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 44,
+                       "x": 18,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1" } ],
+                               [ "AWS/Lambda", "Duration", "FunctionName", "collection-service-${Stage}-Search", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "period": 300,
+                           "title": "Search function Duration",
+                           "stat": "Average",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Miliseconds",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 50,
+                       "x": 18,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1", "region": "${AWS::Region}" } ],
+                               [ "AWS/Lambda", "Errors", "FunctionName", "collection-service-${Stage}-Search", { "id": "m1", "region": "${AWS::Region}", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "stat": "Sum",
+                           "period": 300,
+                           "title": "Search function Errors",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 56,
+                       "x": 0,
+                       "type": "metric",
+                       "properties": {
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "metrics": [
+                               [ "AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", "${Stage}-mtg-collection-db", { "region": "${AWS::Region}" } ],
+                               [ ".", "ConsumedWriteCapacityUnits", ".", ".", { "region": "${AWS::Region}" } ]
+                           ],
+                           "region": "${AWS::Region}",
+                           "title": "Collection-service Dynamo",
+                           "period": 300
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 56,
+                       "x": 6,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1", "region": "${AWS::Region}" } ],
+                               [ "AWS/ApiGateway", "Count", "ApiName", "${Stage}-mtg-collection-api", { "id": "m1", "visible": false, "region": "${AWS::Region}" } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "stat": "Sum",
+                           "period": 300,
+                           "title": "Collection-service Api-gateway",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 1,
+                       "width": 24,
+                       "y": 62,
+                       "x": 0,
+                       "type": "text",
+                       "properties": {
+                           "markdown": "## Deck-service"
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 63,
+                       "x": 18,
+                       "type": "metric",
+                       "properties": {
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "metrics": [
+                               [ "AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", "${Stage}-mtg-deck-db", { "region": "${AWS::Region}" } ],
+                               [ ".", "ConsumedWriteCapacityUnits", ".", ".", { "region": "${AWS::Region}" } ]
+                           ],
+                           "region": "${AWS::Region}",
+                           "title": "Deck-service Dynamo",
+                           "period": 300
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 69,
+                       "x": 18,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1", "region": "${AWS::Region}" } ],
+                               [ "AWS/ApiGateway", "Count", "ApiName", "${Stage}-mtg-deck-api", { "id": "m1", "visible": false, "region": "${AWS::Region}" } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "stat": "Sum",
+                           "period": 300,
+                           "title": "Deck-service Api-gateway",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 63,
+                       "x": 0,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1" } ],
+                               [ "AWS/Lambda", "Invocations", "FunctionName", "deck-service-${Stage}-CreateDeckFunction", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "title": "Create deck function Invocations",
+                           "period": 300,
+                           "stat": "Sum",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 69,
+                       "x": 0,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1" } ],
+                               [ "AWS/Lambda", "Duration", "FunctionName", "deck-service-${Stage}-CreateDeckFunction", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "period": 300,
+                           "title": "Create deck function Duration",
+                           "stat": "Average",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Miliseconds",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 75,
+                       "x": 0,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1", "region": "${AWS::Region}" } ],
+                               [ "AWS/Lambda", "Errors", "FunctionName", "deck-service-${Stage}-CreateDeckFunction", { "id": "m1", "region": "${AWS::Region}", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "stat": "Sum",
+                           "period": 300,
+                           "title": "Create deck function Errors",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 63,
+                       "x": 6,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1" } ],
+                               [ "AWS/Lambda", "Invocations", "FunctionName", "deck-service-${Stage}-GetDecksFromUserFunction", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "title": "Get decks function Invocations",
+                           "period": 300,
+                           "stat": "Sum",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 69,
+                       "x": 6,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1" } ],
+                               [ "AWS/Lambda", "Duration", "FunctionName", "deck-service-${Stage}-GetDecksFromUserFunction", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "period": 300,
+                           "title": "Get decks function Duration",
+                           "stat": "Average",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Miliseconds",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 75,
+                       "x": 6,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1", "region": "${AWS::Region}" } ],
+                               [ "AWS/Lambda", "Errors", "FunctionName", "deck-service-${Stage}-GetDecksFromUserFunction", { "id": "m1", "region": "${AWS::Region}", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "stat": "Sum",
+                           "period": 300,
+                           "title": "Get decks function Errors",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 63,
+                       "x": 12,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1" } ],
+                               [ "AWS/Lambda", "Invocations", "FunctionName", "deck-service-${Stage}-GetDeckByIdFunction", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "title": "Get deck by id function Invocations",
+                           "period": 300,
+                           "stat": "Sum",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 69,
+                       "x": 12,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1" } ],
+                               [ "AWS/Lambda", "Duration", "FunctionName", "deck-service-${Stage}-GetDeckByIdFunction", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "period": 300,
+                           "title": "Get deck by id function Duration",
+                           "stat": "Average",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Miliseconds",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 75,
+                       "x": 12,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1", "region": "${AWS::Region}" } ],
+                               [ "AWS/Lambda", "Errors", "FunctionName", "deck-service-${Stage}-GetDeckByIdFunction", { "id": "m1", "region": "${AWS::Region}", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "stat": "Sum",
+                           "period": 300,
+                           "title": "Get deck by id function Errors",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 81,
+                       "x": 0,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1" } ],
+                               [ "AWS/Lambda", "Invocations", "FunctionName", "deck-service-${Stage}-GetCardsFromDeckFunction", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "title": "Get cards from deck function Invocations",
+                           "period": 300,
+                           "stat": "Sum",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 87,
+                       "x": 0,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1" } ],
+                               [ "AWS/Lambda", "Duration", "FunctionName", "deck-service-${Stage}-GetCardsFromDeckFunction", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "period": 300,
+                           "title": "Get cards from deck function Duration",
+                           "stat": "Average",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Miliseconds",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 93,
+                       "x": 0,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1", "region": "${AWS::Region}" } ],
+                               [ "AWS/Lambda", "Errors", "FunctionName", "deck-service-${Stage}-GetCardsFromDeckFunction", { "id": "m1", "region": "${AWS::Region}", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "stat": "Sum",
+                           "period": 300,
+                           "title": "Get cards from deck function Errors",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 81,
+                       "x": 6,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1" } ],
+                               [ "AWS/Lambda", "Invocations", "FunctionName", "deck-service-${Stage}-GetCardByIdFromDeckFunction", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "title": "Get card by id from deck function Invocations",
+                           "period": 300,
+                           "stat": "Sum",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 87,
+                       "x": 6,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1" } ],
+                               [ "AWS/Lambda", "Duration", "FunctionName", "deck-service-${Stage}-GetCardByIdFromDeckFunction", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "period": 300,
+                           "title": "Get card by id from deck function Duration",
+                           "stat": "Average",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Miliseconds",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 93,
+                       "x": 6,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1", "region": "${AWS::Region}" } ],
+                               [ "AWS/Lambda", "Errors", "FunctionName", "deck-service-${Stage}-GetCardByIdFromDeckFunction", { "id": "m1", "region": "${AWS::Region}", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "stat": "Sum",
+                           "period": 300,
+                           "title": "Get card by id from deck function Errors",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 1,
+                       "width": 24,
+                       "y": 99,
+                       "x": 0,
+                       "type": "text",
+                       "properties": {
+                           "markdown": "## User-service"
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 100,
+                       "x": 12,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1", "region": "${AWS::Region}" } ],
+                               [ "AWS/ApiGateway", "Count", "ApiName", "${Stage}-mtg-user-api", { "id": "m1", "visible": false, "region": "${AWS::Region}" } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "stat": "Sum",
+                           "period": 300,
+                           "title": "User-service Api-gateway",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 100,
+                       "x": 0,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1" } ],
+                               [ "AWS/Lambda", "Invocations", "FunctionName", "user-service-${Stage}-RegisterUserFunction", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "title": "Register user function Invocations",
+                           "period": 300,
+                           "stat": "Sum",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 106,
+                       "x": 0,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1" } ],
+                               [ "AWS/Lambda", "Duration", "FunctionName", "user-service-${Stage}-RegisterUserFunction", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "period": 300,
+                           "title": "Register user function Duration",
+                           "stat": "Average",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Miliseconds",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 112,
+                       "x": 0,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1", "region": "${AWS::Region}" } ],
+                               [ "AWS/Lambda", "Errors", "FunctionName", "user-service-${Stage}-RegisterUserFunction", { "id": "m1", "region": "${AWS::Region}", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "stat": "Sum",
+                           "period": 300,
+                           "title": "Register user function Errors",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 100,
+                       "x": 6,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1" } ],
+                               [ "AWS/Lambda", "Invocations", "FunctionName", "user-service-${Stage}-LoginUserFunction", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "title": "Login user function Invocations",
+                           "period": 300,
+                           "stat": "Sum",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 106,
+                       "x": 6,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1" } ],
+                               [ "AWS/Lambda", "Duration", "FunctionName", "user-service-${Stage}-LoginUserFunction", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "period": 300,
+                           "title": "Login user function Duration",
+                           "stat": "Average",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Miliseconds",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 112,
+                       "x": 6,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1", "region": "${AWS::Region}" } ],
+                               [ "AWS/Lambda", "Errors", "FunctionName", "user-service-${Stage}-LoginUserFunction", { "id": "m1", "region": "${AWS::Region}", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "stat": "Sum",
+                           "period": 300,
+                           "title": "Login user function Errors",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           }
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 112,
+                       "x": 12,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1" } ],
+                               [ "AWS/Cognito", "SignInSuccesses", "UserPool", "${UserPoolId}", "UserPoolClient", "${UserPoolClientId}", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "period": 300,
+                           "title": "Cognito login success",
+                           "yAxis": {
+                               "left": {
+                                   "showUnits": false,
+                                   "label": "Amount"
+                               }
+                           },
+                           "stat": "Sum"
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 106,
+                       "x": 12,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ { "expression": "FILL(METRICS(), 0)", "label": "", "id": "e1" } ],
+                               [ "AWS/Cognito", "SignUpSuccesses", "UserPool", "${UserPoolId}", "UserPoolClient", "${UserPoolClientId}", { "region": "${AWS::Region}", "id": "m1", "visible": false } ]
+                           ],
+                           "view": "timeSeries",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "period": 300,
+                           "title": "Cognito register success",
+                           "yAxis": {
+                               "left": {
+                                   "label": "Amount",
+                                   "showUnits": false
+                               }
+                           },
+                           "stat": "Sum"
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 12,
+                       "x": 6,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ "AWS/Billing", "EstimatedCharges", "ServiceName", "AmazonApiGateway", "Currency", "USD", { "region": "${AWS::Region}", "color": "#e377c2" } ],
+                               [ "...", "AmazonCloudWatch", ".", ".", { "region": "${AWS::Region}" } ],
+                               [ "...", "AmazonDynamoDB", ".", ".", { "region": "${AWS::Region}" } ],
+                               [ "...", "AmazonCognito", ".", ".", { "region": "${AWS::Region}" } ],
+                               [ "...", "AmazonEC2", ".", ".", { "region": "${AWS::Region}" } ],
+                               [ "...", "AmazonS3", ".", ".", { "region": "${AWS::Region}" } ],
+                               [ "...", "AmazonCloudFront", ".", ".", { "color": "#bcbd22" } ]
+                           ],
+                           "view": "pie",
+                           "stacked": false,
+                           "region": "${AWS::Region}",
+                           "title": "Costs by service",
+                           "period": 21600,
+                           "stat": "Maximum"
+                       }
+                   },
+                   {
+                       "height": 6,
+                       "width": 6,
+                       "y": 12,
+                       "x": 0,
+                       "type": "metric",
+                       "properties": {
+                           "sparkline": true,
+                           "view": "singleValue",
+                           "metrics": [
+                               [ "AWS/Billing", "EstimatedCharges", "Currency", "USD", { "period": 21600, "stat": "Maximum", "region": "${AWS::Region}" } ]
+                           ],
+                           "region": "${AWS::Region}",
+                           "period": 300,
+                           "title": "Total cost"
+                       }
+                   },
+                   {
+                       "height": 5,
+                       "width": 5,
+                       "y": 7,
+                       "x": 15,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ "AWS/CloudFront", "TotalErrorRate", "Region", "Global", "DistributionId", "${CloudFrontDistributionId}", { "id": "m1", "region": "${AWS::Region}" } ]
+                           ],
+                           "view": "gauge",
+                           "region": "${AWS::Region}",
+                           "stat": "Average",
+                           "period": 300,
+                           "stacked": false,
+                           "yAxis": {
+                               "left": {
+                                   "min": 0,
+                                   "max": 100
+                               }
+                           },
+                           "title": "Cloudfront Error percentage",
+                           "setPeriodToTimeRange": true
+                       }
+                   },
+                   {
+                       "height": 5,
+                       "width": 4,
+                       "y": 7,
+                       "x": 20,
+                       "type": "metric",
+                       "properties": {
+                           "metrics": [
+                               [ "AWS/CloudFront", "4xxErrorRate", "Region", "Global", "DistributionId", "${CloudFrontDistributionId}" ],
+                               [ ".", "5xxErrorRate", ".", ".", ".", "." ]
+                           ],
+                           "view": "pie",
+                           "region": "${AWS::Region}",
+                           "stat": "Sum",
+                           "period": 300,
+                           "setPeriodToTimeRange": true,
+                           "sparkline": false,
+                           "trend": false,
+                           "title": "Distribution Client/Server errors"
+                       }
+                   }
+               ]
+           }'
+        - CloudFrontDistributionId: !ImportValue
+            'Fn::Sub': "front-end-${Stage}-CloudFrontId"
+          UserPoolId: !ImportValue
+            'Fn::Sub': "user-service-${Stage}-user-pool-id"
+          UserPoolClientId: !ImportValue
+            'Fn::Sub': "user-service-${Stage}-user-pool-client-id"

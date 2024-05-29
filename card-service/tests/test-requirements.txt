@@ -1,0 +1,11 @@
+# Test requirements
+pytest
+coverage
+moto
+python-jose
+requests_mock
+ijson
+
+# Function requirements
+boto3
+aws_xray_sdk

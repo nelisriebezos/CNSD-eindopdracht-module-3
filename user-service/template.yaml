@@ -1,0 +1,213 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: user-service
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 3
+    MemorySize: 128
+    Handler: app.lambda_handler
+    Runtime: python3.9
+    Architectures:
+      - x86_64
+    Tracing: Active
+    Environment:
+      Variables:
+        EVENT_BUS_ARN:
+          Fn::ImportValue:
+            !Sub "common-service-${Stage}-MTGEventBus"
+
+Parameters:
+  Stage:
+    Type: String
+    Default: development
+
+Conditions:
+  IsProductionStage: !Equals [!Ref Stage, production]
+
+Resources:
+  MTGUserApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub "${Stage}-mtg-user-api"
+      StageName: !Ref Stage
+      OpenApiVersion: '2.0'
+      DefinitionBody:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location: ./swagger-spec.json
+      Auth:
+        Authorizers:
+          CognitoAuth:
+            UserPoolArn: !GetAtt UserPool.Arn
+            Identity:
+              Header: Authorization
+        DefaultAuthorizer: CognitoAuth
+      MethodSettings:
+        - ResourcePath: '/*'
+          HttpMethod: '*'
+          LoggingLevel: INFO
+          MetricsEnabled: true
+      AccessLogSetting:
+        DestinationArn: !GetAtt AccessLogGroup.Arn
+        Format: '{"requestTime":"$context.requestTime","requestId":"$context.requestId","httpMethod":"$context.httpMethod","path":"$context.path","routeKey":"$context.routeKey","status":$context.status,"responseLatency":$context.responseLatency}'
+
+  AccessLogGroup:
+    Type: AWS::Logs::LogGroup
+
+  MTGUserApiUrlParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /${Stage}/MTGUserApi/url
+      Type: String
+      Value: !Sub "https://${MTGUserApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
+
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub "${Stage}-MTGUserPool"
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      VerificationMessageTemplate:
+        DefaultEmailOption: CONFIRM_WITH_LINK
+      Policies:
+        PasswordPolicy:
+            MinimumLength: 8
+      Schema:
+        - Name: email
+          AttributeDataType: String
+      EmailConfiguration:
+        EmailSendingAccount: DEVELOPER
+        SourceArn: arn:aws:ses:us-east-1:861259332787:identity/dragons.cloud-native-minor.it
+        From: !If [IsProductionStage, "verify@dragons.cloud-native-minor.it", !Sub "verify-${Stage}@dragons.cloud-native-minor.it"]
+
+  UserPoolIdParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /${Stage}/Cognito/userPoolId
+      Type: String
+      Value: !Ref UserPool
+
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Sub "${Stage}-mtg-user-pool-domain"
+      UserPoolId: !Ref UserPool
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_CUSTOM_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+
+  RegisterUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "user-service-${Stage}-RegisterUserFunction"
+      CodeUri: functions/register_user/
+      Events:
+        RegisterUser:
+          Type: Api
+          Properties:
+            RestApiId: !Ref "MTGUserApi"
+            Path: /api/users
+            Method: post
+      Environment:
+        Variables:
+          USER_POOL_CLIENT_ID: !Ref UserPoolClient
+          USER_POOL_ID: !Ref UserPool
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - !Ref RegisterUserFunctionPolicy
+
+  RegisterUserFunctionPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "${Stage}-RegisterUserFunctionPolicy"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - cognito-idp:SignUp
+              - cognito-idp:AdminGetUser
+            Resource: "*"
+
+  LoginUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "user-service-${Stage}-LoginUserFunction"
+      CodeUri: functions/login_user/
+      Events:
+        LoginUser:
+          Type: Api
+          Properties:
+            RestApiId: !Ref "MTGUserApi"
+            Path: /api/users/login
+            Method: post
+      Environment:
+        Variables:
+          USER_POOL_CLIENT_ID: !Ref UserPoolClient
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - !Ref LoginFunctionPolicy
+
+  LoginFunctionPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "${Stage}-LoginFunctionPolicy"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - cognito-idp:InitiateAuth
+            Resource: "*"
+
+Outputs:
+  UserPoolClientId:
+    Description: UserPool Client Id
+    Value: !Ref UserPoolClient
+    Export:
+      Name:
+        'Fn::Sub': '${AWS::StackName}-user-pool-client-id'
+
+  UserPoolId:
+    Description: UserPool Id
+    Value: !Ref UserPool
+    Export:
+      Name:
+        'Fn::Sub': '${AWS::StackName}-user-pool-id'
+
+  UserPoolArn:
+    Description: UserPool Arn
+    Value: !GetAtt UserPool.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-cognito-user-pool
+
+  RegisterUserFunction:
+    Description: Function
+    Value: !GetAtt RegisterUserFunction.Arn
+
+  LoginUserFunction:
+    Description: Function
+    Value: !GetAtt LoginUserFunction.Arn
+
+  MTGUserApiUrl:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${MTGUserApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
+
+  MTGUserApi:
+    Description: "Api gateway"
+    Value: !Ref MTGUserApi
+    Export:
+      Name:
+        'Fn::Sub': '${AWS::StackName}-api'

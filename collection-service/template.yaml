@@ -1,0 +1,185 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Collection-service
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 10
+    MemorySize: 128
+    Handler: app.lambda_handler
+    Runtime: python3.10
+    Architectures:
+      - x86_64
+    Tracing: Active
+    Environment:
+      Variables:
+        EVENT_BUS_ARN:
+          Fn::ImportValue:
+            !Sub "common-service-${Stage}-MTGEventBus"
+
+Parameters:
+  Stage:
+    Type: String
+    Default: development
+
+Resources:
+  MTGCollectionApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub "${Stage}-mtg-collection-api"
+      StageName: !Ref Stage
+      OpenApiVersion: '2.0'
+      DefinitionBody:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location: ./swagger-spec.json
+      Auth:
+        Authorizers:
+          CognitoAuth:
+            UserPoolArn:
+              Fn::ImportValue: !Sub user-service-${Stage}-cognito-user-pool
+            Identity:
+              Header: Authorization
+        DefaultAuthorizer: CognitoAuth
+      MethodSettings:
+        - ResourcePath: '/*'
+          HttpMethod: '*'
+          LoggingLevel: INFO
+          MetricsEnabled: true
+      AccessLogSetting:
+        DestinationArn: !GetAtt AccessLogGroup.Arn
+        Format: '{"requestTime":"$context.requestTime","requestId":"$context.requestId","httpMethod":"$context.httpMethod","path":"$context.path","routeKey":"$context.routeKey","status":$context.status,"responseLatency":$context.responseLatency}'
+
+  AccessLogGroup:
+    Type: AWS::Logs::LogGroup
+
+  MTGCollectionApiUrlParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /${Stage}/MTGCollectionApi/url
+      Type: String
+      Value: !Sub "https://${MTGCollectionApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
+
+  MTGCollectionDynamoDBTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    Properties:
+      TableName: !Sub "${Stage}-mtg-collection-db"
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+        - AttributeName: GSI1SK
+          AttributeType: S
+        - AttributeName: GSI2SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: GSI-Collection-Cards-In-Deck
+          KeySchema:
+            - AttributeName: PK
+              KeyType: HASH
+            - AttributeName: GSI1SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: GSI-Collection-OracleId
+          KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: GSI2SK
+            KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+
+  SearchFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "collection-service-${Stage}-SearchFunction"
+      CodeUri: functions/Search
+      Events:
+        HelloWorld:
+          Type: Api
+          Properties:
+            RestApiId: !Ref "MTGCollectionApi"
+            Path: /api/collections
+            Method: get
+      Environment:
+        Variables:
+          DYNAMODB_TABLE: !Ref MTGCollectionDynamoDBTable
+      Policies:
+        - AmazonDynamoDBReadOnlyAccess
+
+  GetCollectionInstance:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "collection-service-${Stage}-GetCollectionInstanceFunction"
+      CodeUri: functions/get_instance/
+      Events:
+        GetCollectionInstance:
+          Type: Api
+          Properties:
+            RestApiId: !Ref "MTGCollectionApi"
+            Path: /api/collections/{instance_id}
+            Method: get
+      Environment:
+        Variables:
+          DYNAMODB_TABLE: !Ref MTGCollectionDynamoDBTable
+      Policies:
+        - AmazonDynamoDBReadOnlyAccess
+
+  DeleteCardInstanceFromCollection:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/remove_card/
+      Events:
+        DeleteCardInstanceFromCollection:
+          Type: Api
+          Properties:
+            RestApiId: !Ref "MTGCollectionApi"
+            Path: /api/collections/{instance_id}
+            Method: delete
+      Environment:
+        Variables:
+          DYNAMODB_TABLE_NAME: !Ref MTGCollectionDynamoDBTable
+      Policies:
+        - AmazonDynamoDBFullAccess
+
+  AddCardToCollectionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "collection-service-${Stage}-AddCardToCollectionFunction"
+      CodeUri: functions/add_card/
+      Events:
+        AddCard:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MTGCollectionApi
+            Path: /api/collections
+            Method: post
+      Environment:
+        Variables:
+          DYNAMODB_TABLE_NAME: !Ref MTGCollectionDynamoDBTable
+          STAGE: !Sub "${Stage}"
+      Policies:
+        - AmazonDynamoDBFullAccess
+        - AmazonSSMReadOnlyAccess
+
+Outputs:
+  MTGCollectionApiUrl:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${MTGCollectionApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
+  MTGCollectionApi:
+    Description: "Api gateway"
+    Value: !Ref MTGCollectionApi
+    Export:
+      Name:
+        'Fn::Sub': '${AWS::StackName}-api'

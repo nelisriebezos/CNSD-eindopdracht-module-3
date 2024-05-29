@@ -1,0 +1,3 @@
+python-jose
+boto3
+aws_xray_sdk

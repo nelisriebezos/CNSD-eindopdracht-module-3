@@ -1,0 +1,108 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "MTGAPI",
+    "version": "1.0"
+  },
+  "paths": {
+    "/api/users": {
+      "post": {
+        "security": [
+          { "NONE": [] }
+        ],
+        "parameters" : [
+          {
+            "email": "email1@example.com",
+            "password": "password1"
+          }
+        ],
+        "responses" : {
+          "201": {
+            "description": "User registered successfully"
+          },
+          "400": {
+            "description": "Password too short",
+            "examples": {
+              "application/json": [
+                {
+                  "error": "Password must be at least 8 characters long."
+                }
+              ]
+            }
+          },
+          "409": {
+            "description": "Email address is already in use",
+            "examples": {
+              "application/json": [
+                {
+                  "error": "Email address is already in use."
+                }
+              ]
+            }
+          }
+        },
+        "x-amazon-apigateway-integration" : {
+          "httpMethod" : "POST",
+          "uri": {
+            "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RegisterUserFunction.Arn}/invocations"
+          },
+          "passthroughBehavior" : "when_no_match",
+          "type" : "aws_proxy"
+        }
+      }
+    },
+    "/api/users/login": {
+      "post": {
+        "security": [
+          { "NONE": [] }
+        ],
+        "parameters" : [
+          {
+            "email": "email1@example.com",
+            "password": "password1"
+          }
+        ],
+        "responses" : {
+          "200": {
+            "description": "User logged in successfully",
+            "examples": {
+              "application/json": [
+                {
+                  "token": "eyJraWQiOiJ4cXF4U2d4NjlGQktsTWhvcU81UCtpWEVKTXJqWHh6NDlPVFlNNUhRMERjPSIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiJkOTRjNGI0Ny0xNGNmLTQ3M2MtOWI1NS00YmZiZmNhMTNiYjIiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC51cy1lYXN0LTEuYW1hem9uYXdzLmNvbVwvdXMtZWFzdC0xX3hMMm53MUs1OCIsImNvZ25pdG86dXNlcm5hbWUiOiJkOTRjNGI0Ny0xNGNmLTQ3M2MtOWI1NS00YmZiZmNhMTNiYjIiLCJvcmlnaW5fanRpIjoiNGNkMGRkZjAtNzgxOC00YTIzLWJhNjMtZDk4YmE5N2ExMjE2IiwiYXVkIjoiNnZia212c3VkNzMzc21lbmx2bnA5ZTYwODkiLCJldmVudF9pZCI6IjE1YTBhZTNhLTMwZjQtNGJkZi04YzllLTE2YWZlMGZhNTZmNCIsInRva2VuX3VzZSI6ImlkIiwiYXV0aF90aW1lIjoxNzA1ODc0ODQ2LCJleHAiOjE3MDU4Nzg0NDYsImlhdCI6MTcwNTg3NDg0NiwianRpIjoiZGRkMDk3MTktZDU2MC00NzBmLWI1MmUtNTRlY2M0MTJiNTY4IiwiZW1haWwiOiJtYWlrZWwucmVpam5la2Urc3dhZ2dlckBnbWFpbC5jb20ifQ.A4IXPigQ_GpMTR8GwDcdeEyBsdZvhWlXRTypwDnrArvTJhCj0LaFtg3Xhh3KwFUeIan_I4P7mA8eINGXVT8EtSKf5Zn2LaicacY1r1LhhAzzb8JXn56cVg2tjp-PNyja0r3Y57M7k0Mhd1TY2iN3pCVi43Ixgp11G95kVBl2qXt-upEo1br02Y2VPqcUAnlJNgz7kWbie0I4M5FG83gVCZyUq2PzoqAAp3fMue5QADqxw3iA8euZAkqHFx7WJNaj-KjEdZi-D0uCBUxbfCp6o3dnENuPxgVt4b9Uj56WcSRWBWVjp2yNWN0qAgHMADuznm0XDrj1lbMIAKzStrurGA"
+                }
+              ]
+            }
+          },
+          "403": {
+            "description": "Wrong login credentials",
+            "examples": {
+              "application/json": [
+                {
+                  "error": "Username or password is incorrect."
+                }
+              ]
+            }
+          },
+          "400": {
+            "description": "User is not confirmed through mail yet.",
+            "examples": {
+              "application/json": [
+                {
+                  "error": "User is not confirmed yet. Please check your email."
+                }
+              ]
+            }
+          }
+        },
+        "x-amazon-apigateway-integration" : {
+          "httpMethod" : "POST",
+          "uri": {
+            "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LoginUserFunction.Arn}/invocations"
+          },
+          "passthroughBehavior" : "when_no_match",
+          "type" : "aws_proxy"
+        }
+      }
+    }
+  }
+}
